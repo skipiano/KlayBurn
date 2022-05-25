@@ -1,3 +1,4 @@
+from pickletools import uint8
 import requests
 import datetime
 import json
@@ -7,10 +8,12 @@ import pandas as pd
 from io import StringIO
 from dateutil.relativedelta import relativedelta
 
+KST = timezone("Asia/Seoul")
 
-def collectDataFromRow(row, block_list_dict, transaction_list, gas_fee_list, start_date, address_name):
-    cur_date = timezone(
-        "Asia/Seoul").localize(datetime.datetime.strptime(row[0][:10], "%Y-%m-%d"))
+
+def collect_data_from_row(row, block_list_dict, transaction_list, gas_fee_list, start_date, address_name):
+    cur_date = KST.localize(
+        datetime.datetime.strptime(row[0][:10], "%Y-%m-%d"))
     if cur_date > start_date:
         date_delta = cur_date - start_date
         days_ind = date_delta.days
@@ -26,16 +29,12 @@ if __name__ == "__main__":
     last_updated_date = f.read()
     f.close()
     start_date_raw = datetime.datetime.strptime(last_updated_date, "%Y-%m-%d")
-    start_date = timezone("Asia/Seoul").localize(start_date_raw)
-    kst_time_now = datetime.datetime.now(timezone("Asia/Seoul"))
+    start_date = KST.localize(start_date_raw)
+    kst_time_now = datetime.datetime.now(KST)
     date_delta = kst_time_now-start_date
     end_date_raw = datetime.datetime(
         kst_time_now.year, kst_time_now.month, kst_time_now.day, 23, 59, 59, 999999) - datetime.timedelta(days=1)
-    end_date = timezone("Asia/Seoul").localize(end_date_raw)
-    # debug
-    end_date_raw = datetime.datetime(2019, 7, 31, 23, 59, 59, 999999)
-    end_date = timezone(
-        "Asia/Seoul").localize(end_date_raw)
+    end_date = KST.localize(end_date_raw)
 
     if end_date < start_date:
         raise Exception("Ran function too early")
@@ -57,9 +56,9 @@ if __name__ == "__main__":
     # could combined all of these into one including total for the blocks?
     block_list_dict = {}
     for member in addresses:
-        block_list_dict[member["name"]] = np.zeros(num_days, dtype=uint32)
-    block_list_dict["Total"] = np.zeros(num_days, dtype=uint32)
-    transaction_list = np.zeros(num_days, dtype=uint32)
+        block_list_dict[member["name"]] = np.zeros(num_days, dtype=np.uint32)
+    block_list_dict["Total"] = np.zeros(num_days, dtype=np.uint32)
+    transaction_list = np.zeros(num_days, dtype=np.uint64)
     gas_fee_list = np.zeros(num_days)
     request_link1 = "https://klaytn-proposed-block.s3.ap-northeast-2.amazonaws.com/cypress/"
     request_link2 = "/ProposedBlocks_"
@@ -67,14 +66,14 @@ if __name__ == "__main__":
     while start_month <= end_month:
         print(datetime.datetime.strftime(start_month, "%Y-%m"))
         # load all of the csv files for a KGC member, then iterate over
-        for i in range(KGC_len):
-            print(addresses[i]["name"])
+        for member in addresses:
+            print(member["name"])
             response = requests.get(request_link1 + datetime.datetime.strftime(start_month, "%Y%b")
-                                    + request_link2 + datetime.datetime.strftime(start_month, "%Y%b") + "_" + addresses[i]["address"] + ".csv")
+                                    + request_link2 + datetime.datetime.strftime(start_month, "%Y%b") + "_" + member["address"] + ".csv")
             if response.text and response.text[0] != "<":
                 df = pd.read_csv(StringIO(response.text), usecols=[1, 2, 3])
-                df.apply(lambda row: collectDataFromRow(
-                    row, block_list_dict, transaction_list, gas_fee_list, start_date, addresses[i]["name"]), axis=1)
+                df.apply(lambda row: collect_data_from_row(
+                    row, block_list_dict, transaction_list, gas_fee_list, start_date, member["name"]), axis=1)
         start_month = start_month + relativedelta(months=1)
     date_range = pd.date_range(start_date_raw, end_date_raw)
     block_df = pd.DataFrame(block_list_dict, index=date_range)
