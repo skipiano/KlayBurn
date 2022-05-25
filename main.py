@@ -68,12 +68,16 @@ if __name__ == "__main__":
         # load all of the csv files for a KGC member, then iterate over
         for member in addresses:
             print(member["name"])
-            response = requests.get(request_link1 + datetime.datetime.strftime(start_month, "%Y%b")
-                                    + request_link2 + datetime.datetime.strftime(start_month, "%Y%b") + "_" + member["address"] + ".csv")
-            if response.text and response.text[0] != "<":
-                df = pd.read_csv(StringIO(response.text), usecols=[1, 2, 3])
-                df.apply(lambda row: collect_data_from_row(
-                    row, block_list_dict, transaction_list, gas_fee_list, start_date, member["name"]), axis=1)
+            try:
+                response = requests.get(request_link1 + datetime.datetime.strftime(start_month, "%Y%b")
+                                        + request_link2 + datetime.datetime.strftime(start_month, "%Y%b") + "_" + member["address"] + ".csv")
+                if response.text and response.text[0] != "<":
+                    df = pd.read_csv(StringIO(response.text),
+                                     usecols=[1, 2, 3])
+                    df.apply(lambda row: collect_data_from_row(
+                        row, block_list_dict, transaction_list, gas_fee_list, start_date, member["name"]), axis=1)
+            except Exception:
+                pass
         start_month = start_month + relativedelta(months=1)
     date_range = pd.date_range(start_date_raw, end_date_raw)
     block_df = pd.DataFrame(block_list_dict, index=date_range)
