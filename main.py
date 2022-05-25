@@ -1,5 +1,3 @@
-from ast import Str
-from gc import collect
 import requests
 import datetime
 import json
