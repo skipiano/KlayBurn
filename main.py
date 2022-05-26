@@ -99,10 +99,6 @@ def update():
     gas_fee_df = pd.DataFrame(np.concatenate(pd.read_csv(
         "gas_fees.csv", index_col=0).to_numpy(), gas_fee_list, axis=0), index=date_range)
 
-    pd.concat([block_df_init, block_df]).to_csv("block.csv")
-    pd.concat([transaction_df_init, transaction_df]).to_csv("transactions.csv")
-    pd.concat([gas_fee_df_init, gas_fee_df]).to_csv("gas_fees.csv")
-
     # for now, write to csv files
     block_df.to_csv("block.csv")
     transaction_df.to_csv("transactions.csv")
