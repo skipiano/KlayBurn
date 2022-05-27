@@ -1,4 +1,3 @@
-from pickletools import uint8
 import requests
 import datetime
 import json
@@ -14,7 +13,7 @@ KST = timezone("Asia/Seoul")
 def collect_data_from_row(row, block_list_dict, transaction_list, gas_fee_list, start_date, address_name):
     cur_date = KST.localize(
         datetime.datetime.strptime(row[0][:10], "%Y-%m-%d"))
-    if cur_date > start_date:
+    if cur_date >= start_date:
         date_delta = cur_date - start_date
         days_ind = date_delta.days
         block_list_dict[address_name][days_ind] = block_list_dict[address_name][days_ind] + 1
@@ -86,18 +85,19 @@ def update():
             except Exception:
                 pass
         start_month = start_month + relativedelta(months=1)
+
     date_range = pd.date_range(datetime.datetime(2019, 6, 25), end_date_raw)
-    block_df_init = pd.read_csv("block.csv", index_col=0).to_numpy()
+    block_df_init = pd.read_csv("block.csv").to_numpy()
     for i in range(len(addresses)):
         block_list_dict[addresses[i]["name"]] = np.concatenate(
-            block_df_init[:, i], block_list_dict[addresses[i]["name"]], axis=0)
+            (block_df_init[:, i+1], block_list_dict[addresses[i]["name"]]), axis=0)
     block_list_dict["Total"] = np.concatenate(
-        block_df_init[:, len(addresses)], block_list_dict["Total"], axis=0)
+        (block_df_init[:, len(addresses)+1], block_list_dict["Total"]), axis=0)
     block_df = pd.DataFrame(block_list_dict, index=date_range)
-    transaction_df = pd.DataFrame(np.concatenate(pd.read_csv(
-        "transactions.csv", index_col=0).to_numpy(), transaction_list, axis=0), index=date_range)
-    gas_fee_df = pd.DataFrame(np.concatenate(pd.read_csv(
-        "gas_fees.csv", index_col=0).to_numpy(), gas_fee_list, axis=0), index=date_range)
+    transaction_df = pd.DataFrame(np.concatenate((pd.read_csv(
+        "transactions.csv").to_numpy()[:, 1], transaction_list), axis=0), index=date_range)
+    gas_fee_df = pd.DataFrame(np.concatenate((pd.read_csv(
+        "gas_fees.csv").to_numpy()[:, 1], gas_fee_list), axis=0), index=date_range)
 
     # for now, write to csv files
     block_df.to_csv("block.csv")
@@ -115,7 +115,7 @@ def setup():
     kst_time_now = datetime.datetime.now(KST)
     date_delta = kst_time_now-start_date
     end_date_raw = datetime.datetime(
-        kst_time_now.year, kst_time_now.month, kst_time_now.day, 23, 59, 59, 999999) - datetime.timedelta(days=1)
+        kst_time_now.year, kst_time_now.month, kst_time_now.day) - datetime.timedelta(days=1)
     end_date = KST.localize(end_date_raw)
 
     if end_date < start_date:
@@ -139,8 +139,8 @@ def setup():
     for member in addresses:
         block_list_dict[member["name"]] = np.zeros(num_days, dtype=np.uint32)
     block_list_dict["Total"] = np.zeros(num_days, dtype=np.uint32)
-    transaction_list = np.zeros(num_days, dtype=[("Transactions", np.uint64)])
-    gas_fee_list = np.zeros(num_days, dtype=[("Gas Fees", np.float64)])
+    transaction_list = np.zeros(num_days, dtype=np.uint64)
+    gas_fee_list = np.zeros(num_days)
     return [start_date_raw, start_date, end_date_raw, start_month, end_month, addresses, block_list_dict, transaction_list, gas_fee_list]
 
 
