@@ -29,7 +29,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'False'
 
 ALLOWED_HOSTS = [
-    'mighty-shelf-44024.herokuapp.com',
+    'intense-dusk-68393.herokuapp.com',
     '127.0.0.1'
 ]
 
